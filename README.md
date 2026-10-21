@@ -12,7 +12,9 @@ Un Puissance 4 simple et ludique, dans une seule page HTML, sans aucune dépenda
 
 ## Jouer
 
-Téléchargez `index.html` et ouvrez-le dans votre navigateur. C'est tout.
+**Jouer en ligne : https://noafabre13-web.github.io/Puissance-4-Noa/**
+
+Ou téléchargez `index.html` et ouvrez-le dans votre navigateur.
 
 ## Comment joue l'ordinateur
 
