@@ -1,7 +1,8 @@
 /* Intelligence artificielle, trois niveaux qui jouent vraiment différemment.
    - Facile : joue un peu au hasard, rate parfois une victoire, ne bloque pas.
    - Moyen : gagne si possible, bloque les menaces évidentes, évite d'offrir la victoire.
-   - Difficile : anticipe plusieurs coups (algorithme minimax avec élagage alpha-bêta). */
+   - Difficile : anticipe plusieurs coups (algorithme minimax avec élagage alpha-bêta).
+   - Expert : même algorithme, un coup plus loin. */
 (function (P4) {
   const E = P4.Engine;
   const ORDER = [3, 2, 4, 1, 5, 0, 6]; // le centre d'abord : il participe à plus d'alignements
@@ -114,7 +115,7 @@
   }
 
   P4.AI = {
-    LEVELS: { easy: "Facile", medium: "Moyen", hard: "Difficile" },
+    LEVELS: { easy: "Facile", medium: "Moyen", hard: "Difficile", expert: "Expert" },
 
     // Choisit une colonne pour le joueur "me". "blocked" = colonne interdite ce tour-ci.
     choose(g, me, level, blocked = -1) {
@@ -123,7 +124,7 @@
       if (cols.length === 1) return cols[0];
       if (level === "easy") return easy(g, me, cols);
       if (level === "medium") return medium(g, me, cols);
-      return hard(g, me, cols, level === "expert" ? 9 : 7);
+      return hard(g, me, cols, level === "expert" ? 8 : 7);
     },
 
     // Conseil pour le joueur humain (mode Entraînement)

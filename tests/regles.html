@@ -65,9 +65,11 @@
   g = E.fromRows([".......", ".......", ".......", ".......", ".......", "BBB.RR."]);
   check("Moyen : gagne quand c'est possible", AI.choose(g, 2, "medium") === 3);
   check("Difficile : gagne quand c'est possible", AI.choose(g, 2, "hard") === 3);
+  check("Expert : gagne quand c'est possible", AI.choose(g, 2, "expert") === 3);
   g = E.fromRows([".......", ".......", ".......", ".......", "B......", "RRR..B."]);
   check("Moyen : bloque la menace", AI.choose(g, 2, "medium") === 3);
   check("Difficile : bloque la menace", AI.choose(g, 2, "hard") === 3);
+  check("Expert : bloque la menace", AI.choose(g, 2, "expert") === 3);
   // Facile : sur 40 essais, il ne bloque pas toujours
   let blocks = 0;
   for (let i = 0; i < 40; i++) if (AI.choose(g, 2, "easy") === 3) blocks++;
@@ -81,6 +83,16 @@
   AI.choose(E.create(), 1, "hard");
   const dt = Math.round(performance.now() - t0);
   check("Difficile répond vite sur plateau vide (" + dt + " ms)", dt < 2500);
+
+  const t1 = performance.now();
+  AI.choose(E.fromRows([".......", ".......", ".......", ".......", "...B...", "..RRB.."]), 1, "expert");
+  const dt1 = Math.round(performance.now() - t1);
+  check("Expert répond vite en début de partie (" + dt1 + " ms)", dt1 < 2500);
+
+  // --- Pop Out : retirer le jeton du bas ---
+  g = E.fromRows([".......", ".......", ".......", "...B...", "...R...", "..RBB.."]);
+  E.removeDisc(g, 5, 3);
+  check("Pop Out : la colonne descend d'une case", E.toRows(g)[5] === "..RRB.." && E.toRows(g)[4] === "...B..." && g[3][3] === 0 && E.isConsistent(g));
 
   // Difficile contre Facile : doit gagner largement
   function duel(l1, l2) {

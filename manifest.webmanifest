@@ -1,0 +1,12 @@
+{
+  "name": "Puissance 4 Noa",
+  "short_name": "Puissance 4",
+  "description": "Puissance 4 : classique, pouvoirs, chrono, Pop Out, défi du jour et entraînement.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#E6E8EE",
+  "theme_color": "#1F2A63",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

@@ -39,6 +39,18 @@
       ],
       options: ["opponent", "level", "time"]
     },
+    popout: {
+      name: "Pop Out", tagline: "Lâche un jeton, ou retire l'un des tiens par le bas.",
+      rules: [
+        "À ton tour, deux choix : lâcher un jeton comme d'habitude, ou retirer un de tes jetons de la rangée du bas.",
+        "Quand tu retires un jeton, toute la colonne descend d'une case.",
+        "Si ton retrait aligne 4 jetons pour toi, tu gagnes, même s'il en aligne aussi pour ton adversaire.",
+        "S'il aligne 4 jetons seulement pour ton adversaire, c'est lui qui gagne : attention !",
+        "Plateau plein : le joueur suivant doit retirer un de ses jetons. S'il ne peut pas, match nul.",
+        "Choisis l'action avec les boutons Lâcher / Retirer sous le plateau, ou la touche R."
+      ],
+      options: []
+    },
     daily: {
       name: "Défi du jour", tagline: "Une position à résoudre, la même pour tout le monde aujourd'hui.",
       rules: [
@@ -57,6 +69,7 @@
         "Facile : il joue de façon accessible et laisse passer des occasions.",
         "Moyen : il gagne quand il peut et bloque les menaces évidentes.",
         "Difficile : il anticipe plusieurs coups à l'avance et prépare des pièges.",
+        "Expert : il voit encore un coup plus loin. Bonne chance !",
         "Conseil : l'ordinateur te montre le meilleur coup. Annuler : tu reviens avant ton dernier coup."
       ],
       options: ["level"]
@@ -81,6 +94,10 @@
     targeting: null,     // { kind, sel: [] }
     clocks: { 1: 0, 2: 0 },
     puzzle: null, dailyDate: null,
+    popMode: false,      // Pop Out : true = la prochaine colonne choisie retire le jeton du bas
+    last: null,          // [r, c] du dernier jeton posé
+    replay: [],          // plateaux successifs de la partie, pour la revoir
+    winLine: null,
     hoverCol: 3
   };
 
@@ -129,6 +146,7 @@
     $("powersPanel").hidden = mode !== "powers";
     $("trainingPanel").hidden = mode !== "training";
     $("dailyPanel").hidden = mode !== "daily";
+    $("popoutPanel").hidden = mode !== "popout";
     ["clock1", "clock2"].forEach(id => $(id).hidden = mode !== "chrono");
     ["score1", "score2"].forEach(id => $(id).hidden = mode === "daily");
     $("resetScore").hidden = mode === "daily";
@@ -144,6 +162,7 @@
     G.powers = { 1: { double: 1, bomb: 1, block: 1, swap: 1 }, 2: { double: 1, bomb: 1, block: 1, swap: 1 } };
     G.powerThisTurn = false; G.extraDrop = 0; G.doubleFirstCol = -1;
     G.blocked = null; G.targeting = null;
+    G.popMode = false; G.last = null; G.winLine = null;
     G.clocks = { 1: G.chronoSecs * 1000, 2: G.chronoSecs * 1000 };
     if (G.mode === "daily") {
       G.dailyDate = D.today();
@@ -155,6 +174,7 @@
       G.current = G.starter;
       G.starter = G.starter === 1 ? 2 : 1; // on alterne qui commence
     }
+    G.replay = [E.clone(G.grid)];
     boardEl.classList.remove("over");
     hideBanner();
     renderDiscs();
@@ -165,6 +185,7 @@
   // ---------- Coups ----------
   function onColumn(c) {
     if (G.targeting && G.targeting.kind === "block") return pickBlockColumn(c);
+    if (G.popMode) return popPlay(c);
     humanPlay(c);
   }
 
@@ -184,7 +205,10 @@
     const p = G.current;
     G.grid[r][c] = p;
     G.moves[p]++;
+    G.last = [r, c];
+    discsEl.querySelectorAll(".last").forEach(d => d.classList.remove("last"));
     const t = animateDrop(r, c, p);
+    slots[r][c].firstChild.classList.add("last");
     render();
     const gen = G.gen;
     setTimeout(() => { if (gen === G.gen) afterDrop(r, c); }, UI.reduceMotion() ? 50 : (t + 0.2) * 1000);
@@ -199,7 +223,7 @@
     d.style.setProperty("--t", t + "s");
     slots[r][c].innerHTML = "";
     slots[r][c].appendChild(d);
-    setTimeout(() => landingFx(d, p, fx), t * 1000);
+    setTimeout(() => { landingFx(d, p, fx); UI.Sound.drop(r); }, t * 1000);
     settle(d, t + 0.25);
     return t;
   }
@@ -221,9 +245,10 @@
 
   function afterDrop(r, c) {
     const p = G.current;
+    G.replay.push(E.clone(G.grid));
     const line = E.winningLine(G.grid, r, c, p);
     if (line) return endGame(p, line);
-    if (E.isFull(G.grid)) return endGame(0);
+    if (E.isFull(G.grid) && !(G.mode === "popout" && canPop(3 - p))) return endGame(0);
     if (G.extraDrop > 0) {
       G.extraDrop--;
       G.doubleFirstCol = c;
@@ -250,6 +275,8 @@
       G.blocked = null;
       UI.toast("Colonne débloquée : c'était le seul coup possible.");
     }
+    G.popMode = G.mode === "popout" && E.isFull(G.grid); // plateau plein : il ne reste que le retrait
+    if (G.popMode) UI.toast("Plateau plein : retire un de tes jetons du bas.");
     G.busy = false;
     render();
     maybeAI();
@@ -273,6 +300,8 @@
     G.over = true; G.busy = false; G.targeting = null;
     hideBanner();
     if (winner) G.scores[winner]++;
+    G.winLine = line || null;
+    UI.Sound.end(G.vsAI ? (winner === 1 ? "win" : winner === 2 ? "lose" : "draw") : winner ? "win" : "draw");
     if (line) {
       line.forEach(([r, c]) => discEl(r, c) && discEl(r, c).classList.add("win"));
       boardEl.classList.add("over");
@@ -342,6 +371,7 @@
     if (summary.coins) items.push(`<li><span class="coin"></span>+${summary.coins} pièces</li>`);
     if (summary.levelUp) items.push(`<li>Niveau ${Pr.level()} atteint</li>`);
     (summary.achievements || []).forEach(a => items.push(`<li>Succès débloqué : ${esc(a.name)} (+${a.coins} pièces)</li>`));
+    if (summary.coins) setTimeout(() => UI.Sound.coin(), 350);
     if (G.mode === "daily" && winner === 1 && !summary.coins) items.push(`<li>Déjà réussi aujourd'hui : améliore tes étoiles pour gagner plus.</li>`);
 
     UI.openSheet(`
@@ -353,8 +383,14 @@
       <div class="actions">
         <button class="btn" data-autofocus id="againBtn">${G.mode === "daily" ? "Réessayer" : "Rejouer"}</button>
         <button class="btn secondary" id="toModesBtn">Changer de mode</button>
+      </div>
+      <div class="actions">
+        ${G.replay.length > 2 ? `<button class="btn secondary small" id="replayBtn">▶ Revoir la partie</button>` : ""}
+        ${G.mode === "daily" && winner === 1 ? `<button class="btn secondary small" id="shareBtn">Partager mon résultat</button>` : ""}
       </div>`);
     $("againBtn").onclick = () => { UI.closeSheet(); newGame(); };
+    if ($("replayBtn")) $("replayBtn").onclick = () => { UI.closeSheet(); replay(); };
+    if ($("shareBtn")) $("shareBtn").onclick = () => share(summary.stars);
     $("toModesBtn").onclick = () => { UI.closeSheet(); P4.App.show("home"); };
     if (solo) P4.App.renderAdBlock($("resultAd"), "fin_de_partie");
     P4.App.refresh();
@@ -514,21 +550,14 @@
       const [r, c] = T.sel[0];
       const d = discEl(r, c), b = d.getBoundingClientRect();
       d.classList.add("explode");
+      UI.Sound.boom();
       UI.FX.burst(b.left + b.width / 2, b.top + b.height / 2, ["#F5B83D", "#E4572E", "#ffffff"], 26, 6);
       setTimeout(() => {
         if (gen !== G.gen) return;
         const moves = E.removeDisc(G.grid, r, c);
+        G.last = null;
         renderDiscs();
-        moves.forEach(m => {
-          const [tr, tc] = m.to;
-          slots[tr][tc].innerHTML = "";
-          const nd = document.createElement("div");
-          nd.className = `disc p${G.grid[tr][tc]} drop`;
-          nd.style.setProperty("--from", "calc(-1 * var(--cell))");
-          nd.style.setProperty("--t", ".2s");
-          slots[tr][tc].appendChild(nd);
-          settle(nd, 0.45);
-        });
+        animateFall(moves);
         setTimeout(() => { if (gen === G.gen) resolveAfterPower(); }, moves.length ? 450 : 100);
       }, 380);
     } else if (T.kind === "swap") {
@@ -552,11 +581,100 @@
   // Après une explosion ou une permutation, plusieurs cases ont changé : on vérifie les deux joueurs
   function resolveAfterPower() {
     G.moves[G.current]++;
+    G.replay.push(E.clone(G.grid));
     const w1 = E.findWin(G.grid, 1), w2 = E.findWin(G.grid, 2);
     if (w1 && w2) return endGame(0, null, "double");
     if (w1 || w2) return endGame(w1 ? 1 : 2, w1 || w2);
     if (E.isFull(G.grid)) return endGame(0);
     endTurn();
+  }
+
+  // Les jetons au-dessus d'un jeton retiré tombent d'une case
+  function animateFall(moves) {
+    moves.forEach(m => {
+      const [tr, tc] = m.to;
+      slots[tr][tc].innerHTML = "";
+      const nd = document.createElement("div");
+      nd.className = `disc p${G.grid[tr][tc]} drop`;
+      nd.style.setProperty("--from", "calc(-1 * var(--cell))");
+      nd.style.setProperty("--t", ".2s");
+      slots[tr][tc].appendChild(nd);
+      settle(nd, 0.45);
+    });
+  }
+
+  // ---------- Pop Out ----------
+  const canPop = p => G.grid[ROWS - 1].includes(p);
+  function setPopMode(on) {
+    if (G.mode !== "popout" || G.over || G.busy) return;
+    if (on && !canPop(G.current)) return say("Tu n'as aucun jeton dans la rangée du bas.");
+    if (!on && E.isFull(G.grid)) return say("Plateau plein : tu dois retirer un jeton.");
+    G.popMode = on;
+    render();
+  }
+  function popPlay(c) {
+    if (G.over || G.busy || UI.sheetOpen) return;
+    const p = G.current;
+    if (G.grid[ROWS - 1][c] !== p) return say("Choisis une colonne avec un de tes jetons tout en bas.");
+    G.busy = true; G.popMode = false;
+    const d = discEl(ROWS - 1, c);
+    d.classList.add("popout");
+    UI.Sound.pop();
+    render();
+    const gen = G.gen;
+    setTimeout(() => {
+      if (gen !== G.gen) return;
+      const moves = E.removeDisc(G.grid, ROWS - 1, c);
+      G.last = null;
+      renderDiscs();
+      animateFall(moves);
+      setTimeout(() => {
+        if (gen !== G.gen) return;
+        G.moves[p]++;
+        G.replay.push(E.clone(G.grid));
+        // Règle officielle : si le retrait aligne 4 pour les deux joueurs, celui qui a retiré gagne
+        const mine = E.findWin(G.grid, p), theirs = E.findWin(G.grid, 3 - p);
+        if (mine || theirs) return endGame(mine ? p : 3 - p, mine || theirs);
+        endTurn();
+      }, moves.length ? 450 : 100);
+    }, 300);
+  }
+
+  // ---------- Revoir la partie ----------
+  function replay() {
+    const gen = G.gen, frames = G.replay, saved = G.grid;
+    let i = 0;
+    boardEl.classList.remove("over");
+    showBanner("Revoir la partie", [{ label: "Arrêter", onClick: stop }]);
+    function stop() {
+      if (gen !== G.gen) return;
+      i = frames.length;
+      G.grid = saved;
+      hideBanner();
+      renderDiscs();
+      if (G.winLine) { G.winLine.forEach(([r, c]) => discEl(r, c) && discEl(r, c).classList.add("win")); boardEl.classList.add("over"); }
+    }
+    (function step() {
+      if (gen !== G.gen || i >= frames.length) return;
+      const prev = frames[i - 1];
+      G.grid = frames[i];
+      renderDiscs();
+      // Le jeton qui vient d'apparaître est marqué comme dernier coup
+      if (prev) forEachDisc((r, c, v) => { if (prev[r][c] !== v) discEl(r, c).classList.add("last"); });
+      bannerEl.firstChild.textContent = `Revoir la partie · coup ${i} sur ${frames.length - 1}`;
+      i++;
+      if (i < frames.length) setTimeout(step, 650);
+      else setTimeout(stop, 1200);
+    })();
+  }
+
+  // ---------- Partage du défi du jour ----------
+  async function share(stars) {
+    const text = `Puissance 4 Noa · Défi n°${G.puzzle.number}\n${"★".repeat(stars)}${"☆".repeat(3 - stars)} gagné en ${G.moves[1]} coups (objectif ${G.puzzle.par})\n${location.href.split("#")[0]}`;
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else { await navigator.clipboard.writeText(text); UI.toast("Résultat copié : colle-le où tu veux !"); }
+    } catch (e) { /* partage annulé */ }
   }
 
   // ---------- Entraînement ----------
@@ -572,7 +690,8 @@
     let snap = null;
     while (G.stack.length) { const s = G.stack.pop(); if (s.current === 1) { snap = s; break; } }
     if (!snap) return;
-    G.grid = snap.grid; G.current = 1; G.moves = snap.moves; G.hintCol = -1;
+    G.grid = snap.grid; G.current = 1; G.moves = snap.moves; G.hintCol = -1; G.last = null;
+    G.replay.length = 1 + G.moves[1] + G.moves[2];
     renderDiscs();
     render();
     say("Coup annulé : à toi de rejouer.");
@@ -604,7 +723,7 @@
         slots[r][c].innerHTML = "";
         if (G.grid[r][c]) {
           const d = document.createElement("div");
-          d.className = "disc p" + G.grid[r][c];
+          d.className = "disc p" + G.grid[r][c] + (G.last && G.last[0] === r && G.last[1] === c ? " last" : "");
           slots[r][c].appendChild(d);
         }
       }
@@ -640,7 +759,9 @@
     // Colonnes jouables
     const myBlock = blockedFor(G.current);
     colBtns.forEach((b, c) => {
-      b.disabled = G.over || (G.targeting && G.targeting.kind === "block" ? !!G.grid[0][c] : (G.grid[0][c] !== 0 || c === myBlock || c === G.doubleFirstCol));
+      b.disabled = G.over || (G.targeting && G.targeting.kind === "block" ? !!G.grid[0][c]
+        : G.popMode ? G.grid[ROWS - 1][c] !== G.current
+        : (G.grid[0][c] !== 0 || c === myBlock || c === G.doubleFirstCol));
     });
     colsEl.classList.toggle("off", !!G.targeting && G.targeting.kind !== "block");
     if (!G.targeting) {
@@ -651,10 +772,24 @@
     // Jeton fantôme
     ghost.firstChild.className = "disc p" + G.current;
     ghost.classList.toggle("hint", G.hintCol >= 0);
-    ghost.style.opacity = !G.over && !G.busy && !G.targeting && human(G.current) ? 1 : 0;
+    ghost.style.opacity = !G.over && !G.busy && !G.targeting && !G.popMode && human(G.current) ? 1 : 0;
+    // Pop Out : les jetons qu'on peut retirer sont entourés, comme les cibles des pouvoirs
+    if (G.mode === "popout") for (let c = 0; c < COLS; c++) {
+      const d = discEl(ROWS - 1, c);
+      if (d) d.classList.toggle("target", G.popMode && G.grid[ROWS - 1][c] === G.current);
+    }
     setHover(G.hoverCol);
 
     renderPowers();
+    if (G.mode === "popout") {
+      const full = E.isFull(G.grid), off = G.over || G.busy;
+      $("popoutPanel").innerHTML = `<div class="seg" role="group" aria-label="Action">
+          <button data-pop="0" aria-pressed="${!G.popMode}" ${off || full ? "disabled" : ""}>Lâcher un jeton</button>
+          <button data-pop="1" aria-pressed="${G.popMode}" ${off || !canPop(G.current) ? "disabled" : ""}>Retirer par le bas</button>
+        </div>
+        <p class="panel-note">${G.popMode ? "Touche une colonne : ton jeton du bas sera retiré." : "Touche une colonne pour lâcher ton jeton."}</p>`;
+      $("popoutPanel").querySelectorAll("[data-pop]").forEach(b => b.onclick = () => setPopMode(b.dataset.pop === "1"));
+    }
     if (G.mode === "training") {
       $("hintBtn").disabled = G.over || G.busy || G.current !== 1;
       $("undoBtn").disabled = G.over || G.busy || !G.stack.some(s => s.current === 1);
@@ -716,8 +851,9 @@
 
   document.addEventListener("keydown", e => {
     if (P4.App.current !== "game" || UI.sheetOpen) return;
-    if (e.target.closest && e.target.closest(".controls, .gamebar, .mode-panel, .banner")) return;
+    if (e.target.closest && e.target.closest(".controls, .gamebar, .mode-panel, .banner, input")) return;
     if (e.key === "Escape" && G.targeting) return cancelTargeting();
+    if ((e.key === "r" || e.key === "R") && G.mode === "popout") return setPopMode(!G.popMode);
     if (/^[1-7]$/.test(e.key)) { setHover(+e.key - 1); onColumn(+e.key - 1); }
     else if (e.key === "ArrowLeft") { setHover(Math.max(0, G.hoverCol - 1)); e.preventDefault(); }
     else if (e.key === "ArrowRight") { setHover(Math.min(COLS - 1, G.hoverCol + 1)); e.preventDefault(); }
