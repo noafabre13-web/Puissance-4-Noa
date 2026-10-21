@@ -133,5 +133,62 @@
     }
   };
 
-  P4.UI = { $, esc, ICONS, openSheet, closeSheet, toast, applyCosmetics, preview, FX, reduceMotion, get sheetOpen() { return !$("sheet").hidden; } };
+  // --- Réglages de l'appareil : sons, vibrations, thème (gardés même si on efface sa progression) ---
+  const OPT_KEY = "p4noa:options";
+  const settings = { sound: true, vibrate: true, theme: "auto" };
+  try { Object.assign(settings, JSON.parse(localStorage.getItem(OPT_KEY)) || {}); } catch (e) { }
+  function applyTheme() {
+    if (settings.theme === "auto") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = settings.theme;
+  }
+  function setSetting(k, v) {
+    settings[k] = v;
+    try { localStorage.setItem(OPT_KEY, JSON.stringify(settings)); } catch (e) { }
+    applyTheme();
+  }
+  applyTheme();
+
+  // --- Sons synthétisés (Web Audio) : aucun fichier à télécharger ---
+  let ac = null;
+  function tone(freq, start, dur, type = "triangle", vol = 0.18, slideTo) {
+    const t = ac.currentTime + start, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g).connect(ac.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol = 0.3) {
+    const len = Math.floor(ac.sampleRate * dur), buf = ac.createBuffer(1, len, ac.sampleRate), data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2;
+    const src = ac.createBufferSource(), g = ac.createGain();
+    src.buffer = buf; g.gain.value = vol;
+    src.connect(g).connect(ac.destination);
+    src.start();
+  }
+  function sfx(fn) {
+    if (!settings.sound) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      fn();
+    } catch (e) { /* audio indisponible */ }
+  }
+  const buzz = ms => { if (settings.vibrate && navigator.vibrate) navigator.vibrate(ms); };
+  const Sound = {
+    // Plus le jeton tombe bas, plus le son est grave
+    drop(row) { buzz(12); sfx(() => { tone(520 - row * 45, 0, 0.12, "triangle", 0.22, 180); noise(0.04, 0.12); }); },
+    pop() { buzz(20); sfx(() => tone(300, 0, 0.18, "sine", 0.25, 900)); },
+    boom() { buzz([30, 30, 60]); sfx(() => { noise(0.35, 0.45); tone(120, 0, 0.3, "sine", 0.3, 40); }); },
+    coin() { sfx(() => { tone(988, 0, 0.09, "square", 0.07); tone(1319, 0.08, 0.25, "square", 0.07); }); },
+    end(kind) {
+      if (kind === "win") { buzz([40, 60, 40]); sfx(() => [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, i === 3 ? 0.45 : 0.14, "triangle", 0.2))); }
+      else if (kind === "lose") { buzz(200); sfx(() => [392, 349, 311, 262].forEach((f, i) => tone(f, i * 0.16, 0.22, "sawtooth", 0.07))); }
+      else sfx(() => { tone(440, 0, 0.18); tone(440, 0.2, 0.25); });
+    }
+  };
+
+  P4.UI = { $, esc, ICONS, Sound, settings, setSetting, openSheet, closeSheet, toast, applyCosmetics, preview, FX, reduceMotion, get sheetOpen() { return !$("sheet").hidden; } };
 })(window.P4 = window.P4 || {});

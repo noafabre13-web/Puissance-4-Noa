@@ -14,7 +14,7 @@
     // Pièces virtuelles gagnées en jouant. Elles ne s'achètent pas et ne se convertissent jamais en argent réel.
     rewards: {
       welcomeCoins: 100,
-      winVsAI: { easy: 10, medium: 20, hard: 40 },
+      winVsAI: { easy: 10, medium: 20, hard: 40, expert: 60 },
       lossVsAI: 5,
       draw: 10,
       localGame: 10,        // partie à deux sur le même appareil

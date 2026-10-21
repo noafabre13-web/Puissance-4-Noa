@@ -3,6 +3,7 @@
 (function (P4) {
   const C = P4.CONFIG, Cat = P4.Catalog, D = P4.Daily;
   const KEY = "p4noa:profil:v1";
+  const LEVELS = Object.keys(P4.AI.LEVELS);
 
   // --- Stockage protégé : si le navigateur refuse (navigation privée), on garde tout en mémoire ---
   const Storage = {
@@ -24,9 +25,9 @@
       seasonClaimed: { free: [], premium: [] },
       stats: {
         games: 0,
-        vsAI: { easy: wdl(), medium: wdl(), hard: wdl() },
+        vsAI: { easy: wdl(), medium: wdl(), hard: wdl(), expert: wdl() },
         local: { p1: 0, p2: 0, draw: 0 },
-        byMode: { classic: 0, powers: 0, chrono: 0, training: 0, daily: 0 },
+        byMode: { classic: 0, powers: 0, chrono: 0, popout: 0, training: 0, daily: 0 },
         streak: 0, bestStreak: 0,
         winMoves: [],       // nombre de coups des victoires contre l'IA (pour la moyenne)
         powers: {},         // pouvoir -> nombre d'utilisations
@@ -61,12 +62,14 @@
     { id: "first_win", name: "Première victoire", desc: "Bats l'ordinateur une fois.", coins: 30, test: s => aiWins(s) >= 1 },
     { id: "beat_medium", name: "Ça devient sérieux", desc: "Bats l'ordinateur en niveau Moyen.", coins: 40, test: s => s.stats.vsAI.medium.win >= 1 },
     { id: "beat_hard", name: "Maître de l'IA", desc: "Bats l'ordinateur en niveau Difficile.", coins: 100, test: s => s.stats.vsAI.hard.win >= 1 },
+    { id: "beat_expert", name: "Invincible", desc: "Bats l'ordinateur en niveau Expert.", coins: 150, test: s => s.stats.vsAI.expert.win >= 1 },
     { id: "games_10", name: "Habitué", desc: "Termine 10 parties.", coins: 50, test: s => s.stats.games >= 10 },
     { id: "games_50", name: "Passionné", desc: "Termine 50 parties.", coins: 150, test: s => s.stats.games >= 50 },
     { id: "streak_3", name: "En série", desc: "Gagne 3 parties d'affilée contre l'ordinateur.", coins: 60, test: s => s.stats.bestStreak >= 3 },
     { id: "quick_win", name: "Éclair", desc: "Bats l'ordinateur en 6 coups ou moins.", coins: 50, test: s => s.stats.quickWin },
     { id: "arsenal", name: "Arsenal complet", desc: "Utilise les 4 pouvoirs au moins une fois.", coins: 60, test: s => Object.keys(s.stats.powers).length >= 4 },
     { id: "chrono_1", name: "Sang-froid", desc: "Termine une partie Chrono.", coins: 30, test: s => s.stats.byMode.chrono >= 1 },
+    { id: "popout_1", name: "Tête en bas", desc: "Termine une partie Pop Out.", coins: 30, test: s => s.stats.byMode.popout >= 1 },
     { id: "daily_1", name: "Défi relevé", desc: "Réussis un défi quotidien.", coins: 40, test: s => s.challenge.wins >= 1 },
     { id: "daily_perfect", name: "Parfait", desc: "Réussis un défi quotidien avec 3 étoiles.", coins: 60, test: s => Object.values(s.challenge.results).some(r => r.stars === 3) },
     { id: "daily_streak3", name: "Régulier", desc: "Réussis le défi quotidien 3 jours de suite.", coins: 100, test: s => s.challenge.streak >= 3 },
@@ -84,7 +87,7 @@
     { id: "play5", name: "Joue 5 parties", event: "play", goal: 5, coins: 40 }
   ];
 
-  function aiWins(s) { return ["easy", "medium", "hard"].reduce((n, l) => n + s.stats.vsAI[l].win, 0); }
+  function aiWins(s) { return LEVELS.reduce((n, l) => n + s.stats.vsAI[l].win, 0); }
 
   function checkAchievements() {
     const unlocked = [];
@@ -343,8 +346,8 @@
     summary() {
       const st = S.stats;
       const w = aiWins(S);
-      const l = ["easy", "medium", "hard"].reduce((n, k) => n + st.vsAI[k].loss, 0);
-      const d = ["easy", "medium", "hard"].reduce((n, k) => n + st.vsAI[k].draw, 0);
+      const l = LEVELS.reduce((n, k) => n + st.vsAI[k].loss, 0);
+      const d = LEVELS.reduce((n, k) => n + st.vsAI[k].draw, 0);
       const played = w + l + d;
       const avg = st.winMoves.length ? st.winMoves.reduce((a, b) => a + b, 0) / st.winMoves.length : null;
       return { games: st.games, wins: w, losses: l, draws: d, rate: played ? Math.round(100 * w / played) : null, bestStreak: st.bestStreak, avgWinMoves: avg };

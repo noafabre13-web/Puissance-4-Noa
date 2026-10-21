@@ -4,10 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Puissance 4 Noa</title>
-<meta name="description" content="Puissance 4 gratuit : classique, pouvoirs, chrono, défi du jour et entraînement contre l'ordinateur.">
+<meta name="description" content="Puissance 4 gratuit : classique, pouvoirs, chrono, Pop Out, défi du jour et entraînement contre l'ordinateur.">
+<meta name="theme-color" content="#1F2A63">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Figtree:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="css/style.css?v=7">
+<link rel="stylesheet" href="css/style.css?v=15">
+<!-- Thème choisi appliqué avant l'affichage, pour éviter un flash clair -->
+<script>try { const t = JSON.parse(localStorage.getItem("p4noa:options") || "{}").theme; if (t && t !== "auto") document.documentElement.dataset.theme = t; } catch (e) { }</script>
 </head>
 <body>
 <div class="app" id="app">
@@ -77,6 +83,7 @@
         <p class="panel-note" id="trainingNote"></p>
       </div>
       <div class="mode-panel" id="dailyPanel" hidden></div>
+      <div class="mode-panel" id="popoutPanel" hidden></div>
 
       <div class="controls">
         <button class="btn" id="newGame">Nouvelle partie</button>
@@ -132,15 +139,15 @@
 <div class="toast" id="toast" role="status" hidden></div>
 <canvas id="fx" aria-hidden="true"></canvas>
 
-<script src="js/config.js?v=7"></script>
-<script src="js/engine.js?v=7"></script>
-<script src="js/ai.js?v=7"></script>
-<script src="js/daily.js?v=7"></script>
-<script src="js/catalog.js?v=7"></script>
-<script src="js/progress.js?v=7"></script>
-<script src="js/payments.js?v=7"></script>
-<script src="js/ui.js?v=7"></script>
-<script src="js/game.js?v=7"></script>
-<script src="js/app.js?v=7"></script>
+<script src="js/config.js?v=15"></script>
+<script src="js/engine.js?v=15"></script>
+<script src="js/ai.js?v=15"></script>
+<script src="js/daily.js?v=15"></script>
+<script src="js/catalog.js?v=15"></script>
+<script src="js/progress.js?v=15"></script>
+<script src="js/payments.js?v=15"></script>
+<script src="js/ui.js?v=15"></script>
+<script src="js/game.js?v=15"></script>
+<script src="js/app.js?v=15"></script>
 </body>
 </html>

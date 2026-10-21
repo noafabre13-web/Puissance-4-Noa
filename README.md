@@ -6,13 +6,22 @@ Un Puissance 4 simple et ludique, jouable dans le navigateur, sans installation 
 
 ## Modes de jeu
 
-- **Classique** : à deux sur le même appareil, ou contre l'ordinateur (Facile, Moyen, Difficile).
+- **Classique** : à deux sur le même appareil, ou contre l'ordinateur (Facile, Moyen, Difficile, Expert).
 - **Pouvoirs** : à deux, avec 4 pouvoirs utilisables une fois chacun : Double coup, Jeton explosif, Colonne bloquée, Permutation. Chaque pouvoir demande une confirmation et peut être annulé avant le choix de la cible.
 - **Chrono** : une réserve de temps par joueur (1, 3 ou 5 minutes). Temps écoulé, partie perdue.
-- **Défi du jour** : une position à résoudre en un nombre de coups donné, la même pour tout le monde le même jour. Étoiles, série de jours et récompenses.
+- **Pop Out** : à deux. À ton tour, lâche un jeton ou retire l'un des tiens de la rangée du bas (toute la colonne descend). Variante officielle du jeu.
+- **Défi du jour** : une position à résoudre en un nombre de coups donné, la même pour tout le monde le même jour. Étoiles, série de jours, récompenses, et bouton pour partager son résultat.
 - **Entraînement** : contre l'ordinateur, avec conseil du meilleur coup et retour en arrière.
 
 Les règles de chaque mode s'affichent à chaque fois qu'on y entre.
+
+## Confort de jeu
+
+- **Revoir la partie** : à la fin, rejoue tous les coups sur le plateau.
+- **Dernier coup** marqué d'un point blanc.
+- **Sons** (créés par le navigateur, aucun fichier) et **vibrations** sur téléphone.
+- **Thème sombre** : automatique selon l'appareil, ou forcé dans Profil > Réglages.
+- **Application installable** : sur téléphone, « Ajouter à l'écran d'accueil ». Le jeu marche ensuite hors connexion.
 
 ## Progression et boutique
 
@@ -27,14 +36,16 @@ index.html          Les écrans (accueil, partie, boutique, pass, profil)
 css/style.css       Le design
 js/config.js        Prix, récompenses, saison (à modifier ici)
 js/engine.js        Règles du jeu, sans affichage
-js/ai.js            Ordinateur : 3 niveaux, solveur exact
+js/ai.js            Ordinateur : 4 niveaux, solveur exact
 js/daily.js         Défis quotidiens vérifiés
 js/catalog.js       Objets cosmétiques et récompenses du pass
 js/progress.js      Profil du joueur, enregistré dans le navigateur
 js/payments.js      Points de branchement paiements et publicités
-js/ui.js            Fenêtres, messages, effets visuels
+js/ui.js            Fenêtres, messages, effets visuels, sons, thème
 js/game.js          Déroulement d'une partie dans chaque mode
 js/app.js           Navigation et écrans
+sw.js               Fonctionnement hors ligne
+manifest.webmanifest, icon.svg   Installation sur téléphone
 tests/regles.html   Tests automatiques des règles
 ```
 

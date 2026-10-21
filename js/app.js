@@ -83,6 +83,7 @@
     powers: `<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="var(--p1)"/><path d="M25 6L13 25h8l-3 13 13-20h-8z" fill="var(--accent)" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
     chrono: `<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="24" r="15" fill="var(--card)"/><rect x="18" y="3" width="8" height="5" rx="2" fill="var(--card)"/><path d="M22 24V14M22 24l7 4" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/></svg>`,
     daily: (n) => `<svg viewBox="0 0 44 44" aria-hidden="true"><rect x="5" y="8" width="34" height="31" rx="5" fill="var(--card)"/><rect x="5" y="8" width="34" height="9" rx="4" fill="var(--accent)"/><text x="22" y="34" text-anchor="middle" font-family="Big Shoulders Display, Impact, sans-serif" font-weight="900" font-size="16" fill="var(--ink)">${n}</text></svg>`,
+    popout: `<svg viewBox="0 0 44 44" aria-hidden="true"><rect x="13" y="4" width="18" height="28" rx="3" fill="var(--card)" opacity=".25"/><circle cx="22" cy="11" r="6" fill="var(--p2)"/><circle cx="22" cy="24" r="6" fill="var(--p1)"/><circle cx="22" cy="38" r="5" fill="var(--p1)" opacity=".7"/><path d="M31 33l4 4-4 4" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
     training: `<svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="17" fill="var(--card)"/><circle cx="22" cy="22" r="11" fill="var(--p2)"/><circle cx="22" cy="22" r="5" fill="var(--card)"/><circle cx="22" cy="22" r="2" fill="var(--accent)"/></svg>`
   };
 
@@ -110,7 +111,8 @@
       card("classic", "Classique", "À deux ou contre l'ordi.", "") +
       card("powers", "Pouvoirs", "4 capacités spéciales, à deux.", "") +
       card("chrono", "Chrono", "Une horloge par joueur.", "") +
-      card("training", "Entraînement", "3 niveaux d'IA, conseils et retour en arrière.", "");
+      card("popout", "Pop Out", "Lâche un jeton ou retire l'un des tiens par le bas.", "") +
+      card("training", "Entraînement", "4 niveaux d'IA, conseils et retour en arrière.", "", true);
     $("modeCards").querySelectorAll("[data-mode]").forEach(b => b.onclick = () => openModeIntro(b.dataset.mode, false));
 
     $("missionList").innerHTML = Pr.missions().map(m => {
@@ -136,7 +138,7 @@
     const M = P4.Game.MODES[mode];
     const opts = { ...prefs };
     const extra = mode === "daily" ? (() => { const pz = D.forDate(D.today()); return `<div class="notice">Défi n°${pz.number} · objectif : gagner en ${pz.par} coups.</div>`; })()
-      : mode === "powers" ? `<div class="notice">Mode à deux joueurs sur le même appareil.</div>` : "";
+      : mode === "powers" || mode === "popout" ? `<div class="notice">Mode à deux joueurs sur le même appareil.</div>` : "";
 
     function draw() {
       const seg = (key, label, choices) => `
@@ -146,7 +148,7 @@
       let options = "";
       if (M.options.includes("opponent")) options += seg("opponent", "Adversaire", [["local", "2 joueurs"], ["ai", "Contre l'ordi"]]);
       if (M.options.includes("level") && (mode === "training" || opts.opponent === "ai"))
-        options += seg("level", "Niveau de l'ordinateur", [["easy", "Facile"], ["medium", "Moyen"], ["hard", "Difficile"]]);
+        options += seg("level", "Niveau de l'ordinateur", Object.entries(AI.LEVELS));
       if (M.options.includes("time")) options += seg("time", "Temps par joueur", [[60, "1 min"], [180, "3 min"], [300, "5 min"]]);
 
       UI.openSheet(`
@@ -290,7 +292,7 @@
     grid.querySelectorAll("[data-gopass]").forEach(b => b.onclick = () => App.show("pass"));
 
     const R = C.rewards;
-    $("shopInfo").innerHTML = `<b>Gagner des pièces en jouant :</b> victoire contre l'ordinateur ${R.winVsAI.easy} à ${R.winVsAI.hard} pièces, défi du jour jusqu'à ${R.dailyChallenge.base + 3 * R.dailyChallenge.perStar}, missions, récompense quotidienne et succès.
+    $("shopInfo").innerHTML = `<b>Gagner des pièces en jouant :</b> victoire contre l'ordinateur ${R.winVsAI.easy} à ${R.winVsAI.expert} pièces, défi du jour jusqu'à ${R.dailyChallenge.base + 3 * R.dailyChallenge.perStar}, missions, récompense quotidienne et succès.
       Les pièces sont virtuelles : elles ne s'achètent pas et ne se convertissent jamais en argent réel.<br><br>
       <b>Prix en euros :</b> exemples de démonstration, aucun paiement n'est encore connecté.`;
   }
@@ -347,7 +349,7 @@
     const S = Pr.state, sum = Pr.summary(), prem = Pr.isPremium(), st = S.stats;
     const stat = (v, l) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`;
     const stars = Object.values(S.challenge.results).reduce((n, r) => n + (r.stars || 0), 0);
-    const lvl = ["easy", "medium", "hard"].map(k => {
+    const lvl = Object.keys(AI.LEVELS).map(k => {
       const r = st.vsAI[k], n = r.win + r.loss + r.draw;
       return `<tr><td>${AI.LEVELS[k]}</td><td>${r.win}</td><td>${r.loss}</td><td>${r.draw}</td><td>${n ? Math.round(100 * r.win / n) + " %" : "–"}</td></tr>`;
     }).join("");
@@ -412,6 +414,13 @@
 
       <h2 class="section-title">Réglages</h2>
       <div class="card">
+        <div class="setting"><div><b>Thème</b><p>Clair, sombre, ou comme ton appareil.</p></div>
+          <div class="seg" role="group" aria-label="Thème" style="flex:none">${[["auto", "Auto"], ["light", "Clair"], ["dark", "Sombre"]].map(([v, l]) =>
+            `<button data-theme-opt="${v}" aria-pressed="${UI.settings.theme === v}">${l}</button>`).join("")}</div></div>
+        <div class="setting"><div><b>Sons</b><p>Bruitages des jetons et de fin de partie.</p></div>
+          <label class="switch"><input type="checkbox" id="optSound" ${UI.settings.sound ? "checked" : ""} aria-label="Sons"><span></span></label></div>
+        <div class="setting"><div><b>Vibrations</b><p>Sur téléphone, une petite vibration à chaque jeton.</p></div>
+          <label class="switch"><input type="checkbox" id="optVibrate" ${UI.settings.vibrate ? "checked" : ""} aria-label="Vibrations"><span></span></label></div>
         <div class="setting"><div><b>Mode test des achats</b><p>Pour les développeurs : permet de simuler un achat ou une publicité afin de tester l'interface. Les objets obtenus sont marqués TEST. Aucun paiement réel.</p></div>
           <label class="switch"><input type="checkbox" id="testMode" ${S.testMode ? "checked" : ""} aria-label="Mode test des achats"><span></span></label></div>
         <div class="setting"><div><b>Retirer les achats de test</b><p>Supprime tout ce qui a été obtenu en mode test (objets, Premium, pass).</p></div>
@@ -428,6 +437,9 @@
     body.querySelectorAll("[data-gopremium]").forEach(b => b.onclick = () => $("premiumSection").scrollIntoView({ behavior: "smooth" }));
     if ($("buyPremium")) $("buyPremium").onclick = () => purchaseFlow("premium_monthly");
     $("saveNames").onclick = () => { Pr.setNames($("nameP1").value, $("nameP2").value); UI.toast("Noms enregistrés."); renderProfile(); };
+    body.querySelectorAll("[data-theme-opt]").forEach(b => b.onclick = () => { UI.setSetting("theme", b.dataset.themeOpt); renderProfile(); });
+    $("optSound").onchange = e => { UI.setSetting("sound", e.target.checked); UI.Sound.coin(); };
+    $("optVibrate").onchange = e => UI.setSetting("vibrate", e.target.checked);
     $("testMode").onchange = e => { Pr.setTestMode(e.target.checked); UI.toast(e.target.checked ? "Mode test activé : les simulations sont marquées TEST." : "Mode test désactivé."); };
     $("clearTest").onclick = () => { Pr.clearTestPurchases(); UI.applyCosmetics(); UI.toast("Achats de test retirés."); renderProfile(); App.refreshTop(); };
     $("resetAll").onclick = () => {
@@ -445,4 +457,7 @@
   UI.applyCosmetics();
   P4.Game.setup("classic", prefs); // prépare un plateau en arrière-plan, sans lancer de mode
   App.show("home");
+
+  // Installable sur téléphone et jouable hors ligne (ignoré si on ouvre le fichier directement)
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => { });
 })(window.P4 = window.P4 || {});
