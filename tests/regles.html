@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Tests des règles · Puissance 4 Noa</title>
+<style>
+  body { font: 14px system-ui, sans-serif; margin: 24px; background: #E6E8EE; color: #1B2350; }
+  .ok { color: #1d7a3a; } .ko { color: #c0392b; font-weight: 700; }
+  pre { white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Tests automatiques des règles</h1>
+<p>Ouvre cette page pour vérifier que le moteur, l'IA et les défis fonctionnent. Tout doit être vert.</p>
+<pre id="out"></pre>
+<script src="../js/engine.js"></script>
+<script src="../js/ai.js"></script>
+<script src="../js/daily.js"></script>
+<script>
+  const E = P4.Engine, AI = P4.AI;
+  const out = document.getElementById("out");
+  let pass = 0, fail = 0;
+  function check(name, cond) {
+    const line = document.createElement("div");
+    line.className = cond ? "ok" : "ko";
+    line.textContent = (cond ? "✔ " : "✘ ") + name;
+    out.appendChild(line);
+    cond ? pass++ : fail++;
+  }
+
+  // --- Règles de base ---
+  let g = E.create();
+  check("Plateau vide de 6 x 7", g.length === 6 && g[0].length === 7);
+  check("Un jeton tombe en bas", E.lowestRow(g, 3) === 5);
+  g = E.fromRows(["...R...", "...B...", "...R...", "...B...", "...R...", "...B..."]);
+  check("Colonne pleine refusée", E.lowestRow(g, 3) === -1 && !E.validCols(g).includes(3));
+  check("Colonne bloquée exclue", !E.validCols(E.create(), 2).includes(2));
+
+  g = E.fromRows([".......", ".......", ".......", ".......", ".......", "RRRR..."]);
+  check("Victoire horizontale", !!E.winningLine(g, 5, 3, 1));
+  g = E.fromRows([".......", ".......", "B......", "B......", "B......", "B......"]);
+  check("Victoire verticale", !!E.winningLine(g, 2, 0, 2));
+  g = E.fromRows([".......", ".......", "...R...", "..RB...", ".RBB...", "RBBR..."]);
+  check("Victoire diagonale montante", !!E.findWin(g, 1));
+  g = E.fromRows([".......", ".......", "R......", "BR.....", "BBR....", "RBBR..."]);
+  check("Victoire diagonale descendante", !!E.findWin(g, 1));
+  g = E.fromRows([".......", ".......", ".......", ".......", ".......", "RRR.RRR"]);
+  check("Pas de victoire avec un trou", !E.findWin(g, 1));
+
+  // --- Pouvoirs ---
+  g = E.fromRows([".......", ".......", "...R...", "...B...", "...R...", "..BB..."]);
+  const moves = E.removeDisc(g, 4, 3);
+  check("Jeton explosif : les jetons du dessus tombent", E.toRows(g)[5] === "..BB..." && E.toRows(g)[4] === "...B..." && E.toRows(g)[3] === "...R..." && g[2][3] === 0);
+  check("Jeton explosif : 2 déplacements animés", moves.length === 2);
+  check("Jeton explosif : gravité respectée", E.isConsistent(g));
+  g = E.fromRows([".......", ".......", ".......", ".......", "...R...", "..BB..."]);
+  check("Permutation voisine de couleurs différentes acceptée", E.canSwap(g, [4, 3], [5, 3]));
+  check("Permutation de même couleur refusée", !E.canSwap(g, [5, 2], [5, 3]));
+  check("Permutation en diagonale refusée", !E.canSwap(g, [4, 3], [5, 2]));
+  check("Permutation avec une case vide refusée", !E.canSwap(g, [4, 3], [4, 4]));
+  E.swap(g, [4, 3], [5, 3]);
+  check("Permutation : gravité respectée", E.isConsistent(g) && g[4][3] === 2 && g[5][3] === 1);
+
+  // --- IA ---
+  g = E.fromRows([".......", ".......", ".......", ".......", ".......", "BBB.RR."]);
+  check("Moyen : gagne quand c'est possible", AI.choose(g, 2, "medium") === 3);
+  check("Difficile : gagne quand c'est possible", AI.choose(g, 2, "hard") === 3);
+  g = E.fromRows([".......", ".......", ".......", ".......", "B......", "RRR..B."]);
+  check("Moyen : bloque la menace", AI.choose(g, 2, "medium") === 3);
+  check("Difficile : bloque la menace", AI.choose(g, 2, "hard") === 3);
+  // Facile : sur 40 essais, il ne bloque pas toujours
+  let blocks = 0;
+  for (let i = 0; i < 40; i++) if (AI.choose(g, 2, "easy") === 3) blocks++;
+  check("Facile : ne bloque pas systématiquement (" + blocks + "/40)", blocks < 30);
+  // Difficile : évite le piège du double menace en bas (R joue en 2 ou 5 et crée deux menaces)
+  g = E.fromRows([".......", ".......", ".......", ".......", ".......", "..RR..."]);
+  const hc = AI.choose(g, 2, "hard");
+  check("Difficile : neutralise la double menace (joue " + (hc + 1) + ")", hc === 1 || hc === 4);
+  check("IA respecte la colonne bloquée", (() => { for (let i = 0; i < 20; i++) if (AI.choose(E.create(), 2, "hard", 3) === 3) return false; return true; })());
+  const t0 = performance.now();
+  AI.choose(E.create(), 1, "hard");
+  const dt = Math.round(performance.now() - t0);
+  check("Difficile répond vite sur plateau vide (" + dt + " ms)", dt < 2500);
+
+  // Difficile contre Facile : doit gagner largement
+  function duel(l1, l2) {
+    let g = E.create(), p = 1;
+    for (let n = 0; n < 42; n++) {
+      const c = AI.choose(g, p, p === 1 ? l1 : l2);
+      const r = E.lowestRow(g, c); g[r][c] = p;
+      if (E.winningLine(g, r, c, p)) return p;
+      p = 3 - p;
+    }
+    return 0;
+  }
+  let hw = 0; for (let i = 0; i < 6; i++) if (duel("hard", "easy") === 1) hw++;
+  check("Difficile bat Facile (" + hw + "/6)", hw >= 5);
+  let mw = 0; for (let i = 0; i < 6; i++) if (duel("hard", "medium") === 1) mw++;
+  check("Difficile bat Moyen la plupart du temps (" + mw + "/6)", mw >= 4);
+
+  // --- Défis quotidiens ---
+  if (P4.Daily) {
+    P4.Daily.PUZZLES.forEach((pz, i) => {
+      const pg = E.fromRows(pz.rows);
+      const ok = E.isConsistent(pg) && E.countDiscs(pg, 1) === E.countDiscs(pg, 2) && !E.findWin(pg, 1) && !E.findWin(pg, 2)
+        && !AI.forcedWinIn(pg, 1, pz.par - 1 || 0.5) && AI.forcedWinIn(pg, 1, pz.par);
+      check("Défi n°" + (i + 1) + " gagnable en " + pz.par + " coups, pas avant", ok);
+    });
+    check("Le défi du jour change avec la date", P4.Daily.indexFor("2026-10-21") !== P4.Daily.indexFor("2026-10-22"));
+  }
+
+  const sum = document.createElement("h2");
+  sum.className = fail ? "ko" : "ok";
+  sum.textContent = fail ? `${fail} test(s) en échec sur ${pass + fail}` : `Les ${pass} tests passent`;
+  document.body.insertBefore(sum, out);
+  window.TEST_RESULT = { pass, fail };
+</script>
+</body>
+</html>

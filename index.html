@@ -3,379 +3,144 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Puissance 4</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<title>Puissance 4 Noa</title>
+<meta name="description" content="Puissance 4 gratuit : classique, pouvoirs, chrono, défi du jour et entraînement contre l'ordinateur.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Figtree:wght@400;600;700&display=swap">
-<style>
-  /* Mise en page : une colonne centrée, le plateau est la pièce maîtresse, comme la boîte du jeu posée sur la table. */
-  :root {
-    --table: #E6E8EE;      /* fond, gris légèrement bleuté */
-    --ink: #1B2350;        /* texte, bleu nuit */
-    --board: #1F2A63;      /* plateau bleu marine */
-    --board-edge: #151D49;
-    --rose: #F3B6B4;       /* jetons joueur 1 */
-    --rose-deep: #D98F8D;
-    --bleu: #4C8DF0;       /* jetons joueur 2 */
-    --bleu-deep: #2F67C4;
-    --accent: #E4572E;     /* orange des lettres de la boîte */
-    --muted: #6A7090;
-    --card: #F6F7FA;
-
-    --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
-    --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
-
-    --cell: min(12.4vw, 66px);
-    --pad: calc(var(--cell) * 0.22);
-    color-scheme: light;
-  }
-  html, body { background: var(--table); color: var(--ink); }
-  body {
-    font-family: var(--body);
-    font-size: 15px;
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
-    padding-block: 28px 40px;
-  }
-  .wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 18px; }
-
-  h1 {
-    font-family: var(--display);
-    font-weight: 900;
-    font-size: clamp(40px, 11vw, 64px);
-    line-height: .9;
-    letter-spacing: .02em;
-    text-transform: uppercase;
-    margin: 0;
-    display: flex; align-items: center; gap: .18em;
-  }
-  h1 .four {
-    display: inline-grid; place-items: center;
-    width: 1.05em; height: 1.05em; border-radius: 50%;
-    background: var(--rose); color: var(--accent);
-    font-size: .8em;
-  }
-
-  /* Score et tour */
-  .scoreboard { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; width: 100%; }
-  .player {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px; border-radius: 14px;
-    border: 2px solid transparent;
-    transition: border-color .2s, background .2s;
-    min-width: 0;
-  }
-  .player.p2 { flex-direction: row-reverse; text-align: right; }
-  .player.active { border-color: var(--ink); background: var(--card); }
-  .chip { width: 26px; height: 26px; border-radius: 50%; flex: none; }
-  .chip.r { background: radial-gradient(circle, var(--rose) 52%, var(--rose-deep) 54%, var(--rose-deep) 60%, var(--rose) 62%); }
-  .chip.b { background: radial-gradient(circle, var(--bleu) 52%, var(--bleu-deep) 54%, var(--bleu-deep) 60%, var(--bleu) 62%); }
-  .pname { font-weight: 600; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pscore { font-family: var(--display); font-weight: 900; font-size: 30px; line-height: 1; font-variant-numeric: tabular-nums; }
-  .vs { font-family: var(--display); font-weight: 700; color: var(--muted); font-size: 18px; }
-
-  .status { min-height: 1.4em; font-weight: 700; font-size: 17px; text-align: center; }
-  .status .r { color: var(--rose-deep); }
-  .status .b { color: var(--bleu-deep); }
-
-  /* Plateau */
-  .game { position: relative; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
-  .hover-row { position: relative; height: calc(var(--cell) * 0.9); margin: 0 var(--pad); }
-  .ghost {
-    position: absolute; bottom: 4px; left: 0;
-    width: var(--cell); height: var(--cell);
-    display: grid; place-items: center;
-    transition: transform .12s ease-out, opacity .15s;
-    pointer-events: none;
-  }
-  .ghost .disc { width: 84%; height: 84%; }
-
-  .board {
-    position: relative;
-    padding: var(--pad);
-    border-radius: 18px;
-  }
-  .discs, .front {
-    display: grid;
-    grid-template-columns: repeat(7, var(--cell));
-    grid-template-rows: repeat(6, var(--cell));
-  }
-  .discs { position: relative; z-index: 1; }
-  .slot { display: grid; place-items: center; position: relative; }
-  /* La façade du plateau passe devant les jetons : on voit le jeton tomber derrière les trous */
-  .front {
-    position: absolute; inset: 0; z-index: 2;
-    padding: var(--pad);
-    border-radius: 18px;
-    box-shadow: inset 0 0 0 var(--pad) var(--board), 0 10px 0 var(--board-edge), 0 18px 30px rgba(20,25,60,.25);
-    pointer-events: none;
-  }
-  .hole { background: radial-gradient(circle, transparent 40%, rgba(0,0,0,.28) 41%, var(--board) 44.5%); }
-
-  .disc {
-    width: 80%; height: 80%; border-radius: 50%;
-  }
-  .disc.r { background: radial-gradient(circle, var(--rose) 50%, var(--rose-deep) 52%, var(--rose-deep) 58%, var(--rose) 60%); box-shadow: inset 0 -3px 0 rgba(0,0,0,.12); }
-  .disc.b { background: radial-gradient(circle, var(--bleu) 50%, var(--bleu-deep) 52%, var(--bleu-deep) 58%, var(--bleu) 60%); box-shadow: inset 0 -3px 0 rgba(0,0,0,.15); }
-  .discs .disc.drop { animation: fall var(--t, .45s) cubic-bezier(.5,0,1,1) forwards, bounce .22s ease-out var(--t, .45s); }
-  @keyframes fall { from { transform: translateY(var(--from)); } to { transform: translateY(0); } }
-  @keyframes bounce { 0% { transform: translateY(0); } 40% { transform: translateY(-14%); } 100% { transform: translateY(0); } }
-
-  .discs .disc.win { animation: pulse .9s ease-in-out infinite alternate; outline: 4px solid #fff; outline-offset: -2px; }
-  .board.over .disc:not(.win) { opacity: .45; transition: opacity .4s; }
-  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
-
-  /* Colonnes cliquables, posées au-dessus de tout */
-  .cols { position: absolute; inset: 0; z-index: 3; display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 var(--pad); }
-  .col { background: none; border: 0; padding: 0; cursor: pointer; border-radius: 8px; }
-  .col:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
-  .col:disabled { cursor: default; }
-
-  /* Commandes */
-  .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
-  .seg { display: inline-flex; background: var(--card); border-radius: 999px; padding: 4px; border: 2px solid var(--ink); }
-  .seg button { border: 0; background: none; font: 600 14px var(--body); color: var(--ink); padding: 8px 14px; border-radius: 999px; cursor: pointer; }
-  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
-  .btn { font: 700 14px var(--body); padding: 10px 18px; border-radius: 999px; border: 2px solid var(--ink); background: var(--accent); color: #fff; cursor: pointer; box-shadow: 0 3px 0 var(--ink); }
-  .btn.ghostbtn { background: var(--card); color: var(--ink); }
-  .btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
-  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-
-  .hint { color: var(--muted); font-size: 13px; text-align: center; max-width: 42ch; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .discs .disc.drop { animation: none; }
-    .disc.win { animation: none; }
-  }
-</style>
+<link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
+<div class="app" id="app">
 
-<div class="wrap">
-  <h1>Puissance <span class="four">4</span></h1>
-
-  <div class="scoreboard">
-    <div class="player p1 active" id="p1">
-      <span class="chip r"></span>
-      <div style="min-width:0"><div class="pname" id="name1">Joueur rose</div><div class="pscore" id="score1">0</div></div>
+  <header class="topbar">
+    <button class="avatar-btn" id="topAvatar" aria-label="Ouvrir mon profil">🙂</button>
+    <div class="lvl">
+      <b id="topLevel">Niveau 1</b>
+      <div class="bar" aria-hidden="true"><i id="topLevelBar" style="width:0%"></i></div>
     </div>
-    <span class="vs">VS</span>
-    <div class="player p2" id="p2">
-      <span class="chip b"></span>
-      <div style="min-width:0"><div class="pname" id="name2">Joueur bleu</div><div class="pscore" id="score2">0</div></div>
+    <div class="coins" id="topCoins" title="Pièces gagnées en jouant (non convertibles en argent)">
+      <span class="coin" aria-hidden="true"></span><span id="coinCount">0</span><span class="sr" hidden>pièces</span>
     </div>
-  </div>
+  </header>
 
-  <div class="status" id="status" aria-live="polite"></div>
+  <!-- ===== Accueil : menu des modes ===== -->
+  <section class="screen" id="screen-home">
+    <h1 class="logo">Puissance <span class="four">4</span></h1>
+    <button class="login-banner" id="loginBanner" hidden></button>
+    <h2 class="section-title">Modes de jeu</h2>
+    <div class="modes" id="modeCards"></div>
+    <h2 class="section-title">Missions du jour</h2>
+    <div class="card missions" id="missionList"></div>
+    <h2 class="section-title">Bonus</h2>
+    <div class="card" id="adCard"></div>
+  </section>
 
-  <div class="game">
-    <div class="hover-row"><div class="ghost" id="ghost"><div class="disc r"></div></div></div>
-    <div class="board" id="board">
-      <div class="discs" id="discs"></div>
-      <div class="front" id="front"></div>
-      <div class="cols" id="cols"></div>
+  <!-- ===== Partie ===== -->
+  <section class="screen" id="screen-game" hidden>
+    <div class="gamebar">
+      <button class="back" id="backBtn">← Modes</button>
+      <span class="title" id="modeTitle">Classique</span>
+      <button class="icon-btn" id="rulesBtn" aria-label="Revoir les règles du mode">?</button>
     </div>
-  </div>
+    <div class="game-wrap">
+      <div class="scoreboard">
+        <div class="player p1 active" id="p1">
+          <span class="ava" id="ava1">🙂</span>
+          <div class="pinfo"><div class="pname" id="name1">Joueur rose</div><div class="pscore" id="score1">0</div><div class="clock" id="clock1" hidden></div></div>
+        </div>
+        <span class="vs">VS</span>
+        <div class="player p2" id="p2">
+          <span class="ava" id="ava2">🙂</span>
+          <div class="pinfo"><div class="pname" id="name2">Joueur bleu</div><div class="pscore" id="score2">0</div><div class="clock" id="clock2" hidden></div></div>
+        </div>
+      </div>
 
-  <div class="controls">
-    <div class="seg" role="group" aria-label="Mode de jeu">
-      <button id="mode2" aria-pressed="true">2 joueurs</button>
-      <button id="modeAI" aria-pressed="false">Contre l'ordi</button>
+      <div class="status" id="status" aria-live="polite"></div>
+      <div class="banner" id="banner" hidden></div>
+
+      <div class="game">
+        <div class="hover-row"><div class="ghost" id="ghost"><div class="disc p1"></div></div></div>
+        <div class="board v-pulse" id="board">
+          <div class="discs" id="discs"></div>
+          <div class="front" id="front"></div>
+          <div id="blockLayer"></div>
+          <div class="cols" id="cols"></div>
+        </div>
+      </div>
+
+      <div class="mode-panel" id="powersPanel" hidden></div>
+      <div class="mode-panel" id="trainingPanel" hidden>
+        <div class="tools">
+          <button class="btn secondary" id="hintBtn">Conseil</button>
+          <button class="btn secondary" id="undoBtn">Annuler mon coup</button>
+        </div>
+        <p class="panel-note" id="trainingNote"></p>
+      </div>
+      <div class="mode-panel" id="dailyPanel" hidden></div>
+
+      <div class="controls">
+        <button class="btn" id="newGame">Nouvelle partie</button>
+        <button class="btn secondary" id="resetScore">Remettre les scores à 0</button>
+      </div>
+      <p class="hint-text">Clique sur une colonne pour lâcher ton jeton. Au clavier : touches 1 à 7, ou flèches puis Entrée.</p>
     </div>
-    <button class="btn" id="newGame">Nouvelle partie</button>
-    <button class="btn ghostbtn" id="resetScore">Remettre les scores à 0</button>
-  </div>
+  </section>
 
-  <p class="hint">Clique sur une colonne pour lâcher ton jeton. Au clavier : touches 1 à 7, ou flèches puis Entrée. Le premier qui aligne 4 jetons gagne, à l'horizontale, à la verticale ou en diagonale.</p>
+  <!-- ===== Boutique ===== -->
+  <section class="screen" id="screen-shop" hidden>
+    <h1 class="screen-title">Boutique</h1>
+    <p class="lead">Uniquement des objets cosmétiques : aucun ne donne d'avantage en partie. La plupart s'obtiennent avec les pièces gagnées en jouant.</p>
+    <div class="chips" id="shopTabs" role="group" aria-label="Catégories"></div>
+    <div id="shopGrid"></div>
+    <div class="card info-card" id="shopInfo"></div>
+  </section>
+
+  <!-- ===== Pass de saison ===== -->
+  <section class="screen" id="screen-pass" hidden>
+    <h1 class="screen-title">Pass de saison</h1>
+    <p class="lead" id="passLead"></p>
+    <div class="card pass-head" id="passHead"></div>
+    <div class="tiers" id="tierList"></div>
+  </section>
+
+  <!-- ===== Profil ===== -->
+  <section class="screen" id="screen-profile" hidden>
+    <div id="profileBody"></div>
+  </section>
 </div>
 
-<script>
-(() => {
-  const ROWS = 6, COLS = 7;
-  const NAMES = { 1: "rose", 2: "bleu" };
-  const $ = id => document.getElementById(id);
-  const discsEl = $("discs"), frontEl = $("front"), colsEl = $("cols"), boardEl = $("board");
-  const ghost = $("ghost"), statusEl = $("status");
+<nav class="tabbar" id="tabbar" aria-label="Navigation principale">
+  <div class="inner">
+    <button class="tab" data-tab="home" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="12" cy="6" r="3" opacity=".35"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="12" r="3" opacity=".35"/><circle cx="12" cy="12" r="3"/><circle cx="18" cy="12" r="3" opacity=".35"/><circle cx="6" cy="18" r="3"/><circle cx="12" cy="18" r="3" opacity=".35"/><circle cx="18" cy="18" r="3"/></svg>
+      Jouer</button>
+    <button class="tab" data-tab="shop">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h16l-1.5 12h-13z"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8"/></svg>
+      Boutique</button>
+    <button class="tab" data-tab="pass">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z"/><path d="M12 9.5l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2-1.45-1.4 2-.3z" fill="currentColor" stroke="none"/></svg>
+      Pass</button>
+    <button class="tab" data-tab="profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" stroke-linecap="round"/></svg>
+      Profil</button>
+  </div>
+</nav>
 
-  let grid, current, starter = 1, over, busy, vsAI = false, hoverCol = 3;
-  const scores = { 1: 0, 2: 0 };
+<div class="sheet-backdrop" id="sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" id="sheetBody"></div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<canvas id="fx" aria-hidden="true"></canvas>
 
-  // Construction du plateau : 42 emplacements, 42 trous, 7 colonnes cliquables
-  const slots = [];
-  for (let r = 0; r < ROWS; r++) {
-    slots.push([]);
-    for (let c = 0; c < COLS; c++) {
-      const s = document.createElement("div"); s.className = "slot";
-      discsEl.appendChild(s); slots[r].push(s);
-      const h = document.createElement("div"); h.className = "hole";
-      frontEl.appendChild(h);
-    }
-  }
-  const colBtns = [];
-  for (let c = 0; c < COLS; c++) {
-    const b = document.createElement("button");
-    b.className = "col"; b.setAttribute("aria-label", "Colonne " + (c + 1));
-    b.addEventListener("click", () => humanPlay(c));
-    b.addEventListener("pointerenter", () => setHover(c));
-    b.addEventListener("focus", () => setHover(c));
-    colsEl.appendChild(b); colBtns.push(b);
-  }
-
-  function newGame() {
-    grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-    slots.flat().forEach(s => s.innerHTML = "");
-    boardEl.classList.remove("over");
-    over = false; busy = false;
-    current = starter;
-    starter = starter === 1 ? 2 : 1; // on alterne qui commence
-    render();
-    maybeAI();
-  }
-
-  const lowestRow = (g, c) => { for (let r = ROWS - 1; r >= 0; r--) if (!g[r][c]) return r; return -1; };
-
-  // Vérifie si le jeton posé en (r,c) complète un alignement de 4
-  function winningLine(g, r, c, p) {
-    const dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
-    for (const [dr, dc] of dirs) {
-      const line = [[r, c]];
-      for (const s of [1, -1]) {
-        let rr = r + dr * s, cc = c + dc * s;
-        while (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && g[rr][cc] === p) {
-          line.push([rr, cc]); rr += dr * s; cc += dc * s;
-        }
-      }
-      if (line.length >= 4) return line;
-    }
-    return null;
-  }
-
-  function humanPlay(c) {
-    if (over || busy || (vsAI && current === 2)) return;
-    play(c);
-  }
-
-  function play(c) {
-    const r = lowestRow(grid, c);
-    if (r < 0) { statusEl.textContent = "Cette colonne est pleine, choisis-en une autre."; return; }
-    busy = true;
-    grid[r][c] = current;
-    const d = document.createElement("div");
-    d.className = "disc drop " + (current === 1 ? "r" : "b");
-    // Le jeton part du dessus du plateau : plus il tombe bas, plus la chute dure
-    d.style.setProperty("--from", `calc(${-(r + 1.3)} * var(--cell))`);
-    const t = 0.22 + 0.06 * r;
-    d.style.setProperty("--t", t + "s");
-    slots[r][c].appendChild(d);
-    ghost.style.opacity = 0;
-
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setTimeout(() => afterMove(r, c), reduce ? 50 : (t + 0.2) * 1000);
-  }
-
-  function afterMove(r, c) {
-    const line = winningLine(grid, r, c, current);
-    if (line) {
-      over = true;
-      scores[current]++;
-      line.forEach(([rr, cc]) => slots[rr][cc].firstChild.classList.add("win"));
-      boardEl.classList.add("over");
-      statusEl.innerHTML = `<span class="${current === 1 ? "r" : "b"}">${label(current)} ${vsAI && current === 1 ? "gagnes" : "gagne"} !</span>`;
-    } else if (grid[0].every(Boolean)) {
-      over = true;
-      statusEl.textContent = "Match nul, le plateau est plein.";
-    } else {
-      current = current === 1 ? 2 : 1;
-    }
-    busy = false;
-    render();
-    maybeAI();
-  }
-
-  function label(p) {
-    if (vsAI) return p === 1 ? "Tu" : "L'ordi";
-    return "Le joueur " + NAMES[p];
-  }
-
-  function render() {
-    $("score1").textContent = scores[1];
-    $("score2").textContent = scores[2];
-    $("name1").textContent = vsAI ? "Toi" : "Joueur rose";
-    $("name2").textContent = vsAI ? "Ordi" : "Joueur bleu";
-    $("p1").classList.toggle("active", !over && current === 1);
-    $("p2").classList.toggle("active", !over && current === 2);
-    colBtns.forEach((b, c) => b.disabled = over || grid[0][c] !== 0);
-    if (!over) {
-      const who = `<span class="${current === 1 ? "r" : "b"}">`;
-      statusEl.innerHTML = vsAI
-        ? (current === 1 ? `${who}À toi de jouer</span>` : `${who}L'ordi réfléchit…</span>`)
-        : `${who}Au tour du joueur ${NAMES[current]}</span>`;
-    }
-    ghost.firstChild.className = "disc " + (current === 1 ? "r" : "b");
-    const showGhost = !over && !busy && !(vsAI && current === 2);
-    ghost.style.opacity = showGhost ? 1 : 0;
-    setHover(hoverCol);
-  }
-
-  function setHover(c) {
-    hoverCol = c;
-    ghost.style.transform = `translateX(calc(${c} * var(--cell)))`;
-  }
-
-  // IA simple : gagne si possible, bloque sinon, évite d'offrir la victoire, préfère le centre
-  function aiChoose() {
-    const valid = [...Array(COLS).keys()].filter(c => grid[0][c] === 0);
-    const test = (c, p) => { const r = lowestRow(grid, c); grid[r][c] = p; const w = !!winningLine(grid, r, c, p); grid[r][c] = 0; return w; };
-    for (const c of valid) if (test(c, 2)) return c;
-    for (const c of valid) if (test(c, 1)) return c;
-    const safe = valid.filter(c => {
-      const r = lowestRow(grid, c);
-      if (r === 0) return true;
-      grid[r][c] = 2;
-      const danger = test(c, 1);
-      grid[r][c] = 0;
-      return !danger;
-    });
-    const pool = safe.length ? safe : valid;
-    let best = pool[0], bestScore = -Infinity;
-    for (const c of pool) {
-      const s = (3 - Math.abs(3 - c)) + Math.random() * 2.2;
-      if (s > bestScore) { bestScore = s; best = c; }
-    }
-    return best;
-  }
-
-  function maybeAI() {
-    if (vsAI && !over && current === 2) {
-      busy = true;
-      setTimeout(() => { busy = false; play(aiChoose()); }, 550);
-    }
-  }
-
-  function setMode(ai) {
-    vsAI = ai;
-    $("mode2").setAttribute("aria-pressed", String(!ai));
-    $("modeAI").setAttribute("aria-pressed", String(ai));
-    scores[1] = scores[2] = 0;
-    starter = 1;
-    newGame();
-  }
-
-  $("mode2").addEventListener("click", () => setMode(false));
-  $("modeAI").addEventListener("click", () => setMode(true));
-  $("newGame").addEventListener("click", newGame);
-  $("resetScore").addEventListener("click", () => { scores[1] = scores[2] = 0; render(); });
-
-  document.addEventListener("keydown", e => {
-    if (e.target.closest && e.target.closest(".controls")) return;
-    if (/^[1-7]$/.test(e.key)) { humanPlay(+e.key - 1); setHover(+e.key - 1); }
-    else if (e.key === "ArrowLeft") { setHover(Math.max(0, hoverCol - 1)); e.preventDefault(); }
-    else if (e.key === "ArrowRight") { setHover(Math.min(COLS - 1, hoverCol + 1)); e.preventDefault(); }
-    else if ((e.key === "Enter" || e.key === " " || e.key === "ArrowDown") && !e.target.classList.contains("col")) { humanPlay(hoverCol); e.preventDefault(); }
-  });
-
-  newGame();
-})();
-</script>
+<script src="js/config.js?v=7"></script>
+<script src="js/engine.js?v=7"></script>
+<script src="js/ai.js?v=7"></script>
+<script src="js/daily.js?v=7"></script>
+<script src="js/catalog.js?v=7"></script>
+<script src="js/progress.js?v=7"></script>
+<script src="js/payments.js?v=7"></script>
+<script src="js/ui.js?v=7"></script>
+<script src="js/game.js?v=7"></script>
+<script src="js/app.js?v=7"></script>
 </body>
 </html>
